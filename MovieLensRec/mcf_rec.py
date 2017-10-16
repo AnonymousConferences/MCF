@@ -1,8 +1,5 @@
 import sys
 
-sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
-sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')
-sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
 import itertools
 import glob
 import os
@@ -226,17 +223,8 @@ for i in range(10):
             tuner.run_alone("model2", n_jobs = n_jobs, mu_u_p = 1.0, mu_p_p = 1.0, vad_K=100, fold=FOLD )
         if model_type == 'model3':
             tuner.run_alone("model3", n_jobs = n_jobs, mu_p_p = 1.0, mu_p_n = 1.0, vad_K=100, fold=FOLD)
-        if model_type == 'model4':
-            tuner.run_alone("model4", n_jobs = n_jobs, mu_u_p = 1.0, mu_u_n = 1.0, vad_K=100, fold=FOLD)
-        if model_type == 'model5':
-            tuner.run_alone("model5", n_jobs = n_jobs, mu_p_p = 1.0, mu_p_n = 1.0, mu_u_p = 1.0, vad_K=100, fold=FOLD)
-        if model_type == 'model6':
-            tuner.run_alone("model6", n_jobs = n_jobs, mu_u_p = 1.0, mu_u_n = 1.0, mu_p_p = 1.0, vad_K=100, fold=FOLD)
-        if model_type == 'model7':
-            tuner.run_alone("model7", n_jobs = n_jobs, mu_u_p = 1.0, mu_u_n = 1.0, mu_p_p = 1.0, mu_p_n = 1.0, vad_K=100, fold=FOLD)
+        if model_type == 'mcf':
+            tuner.run_alone("mcf", n_jobs = n_jobs, mu_p_p = 1.0, mu_p_n = 1.0, mu_u_p = 1.0, vad_K=100, fold=FOLD)
 
     end = time.time()
 print 'Total time : %d seconds or %f minutes'%(end-start, float((end-start))/60.0)
-sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
-sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
-sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')

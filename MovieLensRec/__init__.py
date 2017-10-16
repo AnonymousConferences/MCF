@@ -1,7 +1,4 @@
 import sys
-sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/objs')
-sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
-sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/modules')
 from backer_loader import load_ks_backers
 import constants
 lst_backers = load_ks_backers()
@@ -34,7 +31,3 @@ for backer in lst_backers:
     fw.write(line + '\n')
 fw.flush()
 fw.close()
-
-sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/objs')
-sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
-sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/modules')
