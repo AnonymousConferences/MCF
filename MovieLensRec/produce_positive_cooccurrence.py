@@ -40,7 +40,7 @@ else:
 if ACTIVE_CATE_PREFIX == '':
     NEG_SAMPLE_MODE=''
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
@@ -158,7 +158,7 @@ def _coord_batch(lo, hi, train_data, prefix = 'project', max_neighbor_words = 20
     pass
 
 
-batch_size = 5000
+batch_size = 500
 for  i in range(10):
     FOLD = i
     train_data, train_raw, train_df = train_10folds[i]
@@ -174,7 +174,7 @@ for  i in range(10):
         print 'Generating project project co-occurrence matrix'
         start_idx = range(0, n_users, batch_size)
         end_idx = start_idx[1:] + [n_users]
-        Parallel(n_jobs=16)(delayed(_coord_batch)(lo, hi, train_data, prefix = 'project') for lo, hi in zip(start_idx, end_idx))
+        Parallel(n_jobs=1)(delayed(_coord_batch)(lo, hi, train_data, prefix = 'project') for lo, hi in zip(start_idx, end_idx))
         t2 = time.time()
         print 'Time : %d seconds'%(t2-t1)
         pass
@@ -188,7 +188,7 @@ for  i in range(10):
         print 'Generating user user co-occurrence matrix'
         start_idx = range(0, n_projects, batch_size)
         end_idx = start_idx[1:] + [n_projects]
-        Parallel(n_jobs=16)(delayed(_coord_batch)(lo, hi, train_data.T, prefix = 'backer') for lo, hi in zip(start_idx, end_idx))
+        Parallel(n_jobs=8)(delayed(_coord_batch)(lo, hi, train_data.T, prefix = 'backer') for lo, hi in zip(start_idx, end_idx))
         t2 = time.time()
         print 'Time : %d seconds'%(t2 - t1)
         pass
@@ -256,4 +256,3 @@ for  i in range(10):
         print '[INFO]: sparse matrix size of user user co-occurrence matrix: %d mb\n' % (
                                                         (Y.data.nbytes + Y.indices.nbytes + Y.indptr.nbytes) / (1024 * 1024))
         print 'Time : %d seconds'%(t2-t1)
-

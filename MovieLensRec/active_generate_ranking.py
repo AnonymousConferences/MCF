@@ -13,7 +13,7 @@ DATA_DIR = 'data/rec_data/all'
 model_names = []
 
 #model_names.append('Cofactor_fold0_recall100_0.0783_ndcg100_0.0559_map100_0.0204.npz')
-for saved_model in glob.glob(os.path.join('./RESULT','Model5*.npz')):
+for saved_model in glob.glob(os.path.join('./RESULT','Baseline1*.npz')):
     print 'adding model %s'%saved_model
     model_names.append(saved_model)
 
@@ -73,12 +73,10 @@ user_activity = np.asarray(train_data.sum(axis=1)).ravel()
 
 #decide activeness by percentage
 sorted_ua = sorted(user_activity)
-ACTIVE_THRESHOLD = 0.1
+ACTIVE_THRESHOLD = 0.2
 cold_indx = sorted_ua[int(ACTIVE_THRESHOLD*len(sorted_ua)) + 1]
 high_active_indx = sorted_ua[int((1.0-ACTIVE_THRESHOLD)*len(sorted_ua)) + 1]
 active_condition = [0, cold_indx, high_active_indx]
-print active_condition
-sys.exit(1)
 
 
 #print user_activity

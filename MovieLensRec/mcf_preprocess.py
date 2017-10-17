@@ -1,6 +1,4 @@
 import sys
-sys.path.append(r'[current Directory]/utils')
-sys.path.append(r'[current Directory]')
 import datetime
 import json
 import os
@@ -309,5 +307,3 @@ if BOOLEAN_SPLIT_DATA:
 #######################################################################################################################
 t2 = time.time()
 print 'Time : %d seconds'%(t2 - t1)
-sys.path.remove(r'[current Directory]/utils')
-sys.path.remove(r'[current Directory]')

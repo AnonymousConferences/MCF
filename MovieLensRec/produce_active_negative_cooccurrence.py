@@ -1,8 +1,4 @@
 import sys
-
-sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
-sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')
-sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
 import itertools
 import glob
 import os
@@ -352,6 +348,3 @@ print 'Time : %d seconds' % (t2 - t1)
 
 
 
-sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
-sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
-sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')

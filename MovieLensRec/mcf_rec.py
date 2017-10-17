@@ -80,7 +80,8 @@ print 'enter the model: (example : model2)'
 
 
 LOAD_NEGATIVE_MATRIX = True
-for i in range(10):
+#for i in range(10):
+for i in range(9,-1,-1):
     FOLD = i
     print '*************************************FOLD %d ******************************************'%FOLD
     train_data, train_raw, train_df = load_data(os.path.join(DATA_DIR, 'train_fold%d.csv'%FOLD))
@@ -226,5 +227,11 @@ for i in range(10):
         if model_type == 'mcf':
             tuner.run_alone("mcf", n_jobs = n_jobs, mu_p_p = 1.0, mu_p_n = 1.0, mu_u_p = 1.0, vad_K=100, fold=FOLD)
 
+        if model_type == 'separatedmodel2':
+            tuner.run_alone("separatedmodel2", n_jobs = n_jobs, max_iter = 10,  mu_u_p = 1.0, mu_p_p = 1.0, vad_K=100, fold=FOLD)
+        if model_type == 'separatedmodel3':
+            tuner.run_alone("separatedmodel3", n_jobs = n_jobs, max_iter = 10, mu_p_p = 1.0, mu_p_n = 1.0, vad_K=100, fold=FOLD)
+        if model_type == 'separatedmcf':
+            tuner.run_alone("separatedmcf", n_jobs = n_jobs, max_iter = 10, mu_u_p = 1.0, mu_p_p = 1.0, mu_p_n = 1.0, vad_K=100, fold=FOLD)
     end = time.time()
 print 'Total time : %d seconds or %f minutes'%(end-start, float((end-start))/60.0)

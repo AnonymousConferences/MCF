@@ -52,11 +52,11 @@ U_best = None
 V_best = None
 best_alpha = 0
 
+#for alpha in [2, 5, 10, 30, 50]:
 for FOLD in range(10):
     print '*************************************FOLD %d ******************************************' % FOLD
     train_data, train_raw = load_data(os.path.join(DATA_DIR, 'train_fold%d.csv'%FOLD))
     for alpha in [20.]:
-    #alpha = 20 gives the best validation performance
         S = content_wmf.linear_surplus_confidence_matrix(train_data, alpha=alpha)
 
         U, V, vad_ndcg = content_wmf.factorize(S, num_factors, vad_data=vad_data, num_iters=num_iters,
@@ -74,6 +74,7 @@ for FOLD in range(10):
 
     recall100,ndcg100,map100 = 0.0, 0.0, 0.0
 
+    # alpha = 10 gives the best validation performance
     for K in [5,10,20,50,100]:
         recall = rec_eval.parallel_recall_at_k(train_data, test_data, U_best, V_best, k=K, vad_data=vad_data)
         print 'Test Recall@%d: %.4f' % (K, recall)

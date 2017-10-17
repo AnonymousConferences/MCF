@@ -2,6 +2,11 @@ import glob
 import os
 import numpy as np
 import rec_eval as rec_eval
+
+import parallel_separated_mf_posneg_embedding_project as separatedmymodel3
+import parallel_separated_mf_pos_user_pos_project as separatedmymodel2
+import parallel_separated_mf_pos_user_posneg_project as separatedmymodel5
+
 # import mf_pos_embedding_user_project as mymodel2
 import parallel_mf_pos_user_pos_project as mymodel2
 import parallel_mf_posneg_embedding_project as mymodel3
@@ -38,13 +43,13 @@ class ModelTuning:
         for K in [5,10,20,50,100]:
             recall_at_K = rec_eval.parallel_recall_at_k(self.train_data, self.test_data, U, V, k=K,
                                                         vad_data=self.vad_data, n_jobs=4, clear_invalid=False)
-            print 'Test Recall@%d: %.4f' % (K, recall_at_K)
+            print 'Test Recall@%d: \t %.4f' % (K, recall_at_K)
             ndcg_at_K = rec_eval.parallel_normalized_dcg_at_k(self.train_data, self.test_data, U, V, k=K,
                                                               vad_data=self.vad_data, n_jobs=4, clear_invalid=False)
-            print 'Test NDCG@%d: %.4f' % (K, ndcg_at_K)
+            print 'Test NDCG@%d: \t %.4f' % (K, ndcg_at_K)
             map_at_K = rec_eval.parallel_map_at_k(self.train_data, self.test_data, U, V, k=K,
                                                   vad_data=self.vad_data, n_jobs=4, clear_invalid=False)
-            print 'Test MAP@%d: %.4f' % (K, map_at_K)
+            print 'Test MAP@%d: \t %.4f' % (K, map_at_K)
             if K == 100:
                 recall100 = recall_at_K
                 ndcg100 = ndcg_at_K
@@ -56,11 +61,11 @@ class ModelTuning:
         is_better = False
         for K in [5,10,20,50,100]:
             recall_at_K = rec_eval.parallel_recall_at_k(self.train_data, self.test_data, U, V, k=K, vad_data=self.vad_data, n_jobs=4)
-            print 'Test Recall@%d: %.4f' % (K, recall_at_K)
+            print 'Test Recall@%d: \t %.4f' % (K, recall_at_K)
             ndcg_at_K = rec_eval.parallel_normalized_dcg_at_k(self.train_data, self.test_data, U, V, k=K, vad_data=self.vad_data, n_jobs=4)
-            print 'Test NDCG@%d: %.4f' % (K, ndcg_at_K)
+            print 'Test NDCG@%d: \t %.4f' % (K, ndcg_at_K)
             map_at_K = rec_eval.parallel_map_at_k(self.train_data, self.test_data, U, V, k=K, vad_data=self.vad_data, n_jobs=4)
-            print 'Test MAP@%d: %.4f' % (K, map_at_K)
+            print 'Test MAP@%d: \t  %.4f' % (K, map_at_K)
             if K == 10:
                 if ndcg_at_K > best_ndcg_10:
                     best_ndcg_10 = ndcg_at_K
@@ -268,6 +273,105 @@ class ModelTuning:
             model_out_name = 'Model7_K100_%srecall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (fold, recall100, ndcg100, map100)
             np.savez(model_out_name, U=U, V=V)
 
+        if type == 'separatedmodel2':
+            print 'positive project embedding + positive user embedding'
+            mu_p = float(kwargs.get('mu_p_p', 0.6))
+            mu_u = float(kwargs.get('mu_u_p', -1.0))
+            if mu_u == -1.0:
+                mu_u = 1.0 - mu_p
+            print 'mu_u = %.2f , mu_p = %.2f' % (mu_u, mu_p)
+            print self.save_dir
+            self.clean_savedir()
+            # coder = mymodel2.MFPositiveUserProjectEmbedding(mu_u = mu_u, mu_p = mu_p,
+            #                  n_components=n_components, max_iter=max_iter, batch_size=1000, init_std=0.01, dtype=np.float32, n_jobs=n_jobs,
+            #                  random_state=98765, save_params=True, save_dir=self.save_dir, early_stopping=True, verbose=True,
+            #                  lambda_alpha = lam_alpha, lambda_theta=lam_theta, lambda_beta=lam_beta, lambda_gamma=lam_gamma, c0=c0, c1=c1)
+            coder = separatedmymodel2.SeparatedParallelMFPosUserPosProjectEmbedding(mu_u=mu_u, mu_p=mu_p,
+                                                                  n_components=n_components, max_iter=max_iter,
+                                                                  batch_size=1000, init_std=0.01, dtype=np.float32,
+                                                                  n_jobs=n_jobs,
+                                                                  random_state=98765, save_params=True,
+                                                                  save_dir=self.save_dir, early_stopping=True,
+                                                                  verbose=True,
+                                                                  lambda_alpha=lam_alpha, lambda_theta=lam_theta,
+                                                                  lambda_beta=lam_beta, lambda_gamma=lam_gamma, c0=c0,
+                                                                  c1=c1)
+            coder.fit(self.train_data, self.X_sppmi, self.Y_sppmi, vad_data=self.vad_data, batch_users=300, k=vad_K,
+                      clear_invalid=True, n_jobs=16)
+
+            self.test_data.data = np.ones_like(self.test_data.data)
+            params = np.load(os.path.join(self.save_dir, 'CoFacto_K%d_separated.npz' % (n_components)))
+            U, V = params['U'], params['V']
+            (recall100, ndcg100, map100) = self.local_alone_eval(U, V)
+            model_out_name = 'Separated_Model2_K100_%srecall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (fold, recall100, ndcg100, map100)
+            np.savez(model_out_name, U=U, V=V)
+           
+        if type == 'separatedmodel3':
+            print 'separated positive project embedding + negative project embedding'
+            mu_p_p = float(kwargs.get('mu_p_p', 0.4))
+            mu_p_n = float(kwargs.get('mu_p_n', -1.0))
+            if mu_p_n == -1.0:
+                mu_p_n = 1.0 - mu_p_p
+            print 'mu_p_p = %.2f , mu_p_n = %.2f' % (mu_p_p, mu_p_n)
+            print self.save_dir
+            self.clean_savedir()
+
+            coder = separatedmymodel3.SeparatedParallelMFPositiveNegativeProjectEmbedding(mu_p_p=mu_p_p, mu_p_n=mu_p_n,
+                                                                        n_components=n_components, max_iter=max_iter,
+                                                                        batch_size=1000, init_std=0.01,
+                                                                        dtype=np.float32, n_jobs=n_jobs,
+                                                                        random_state=98765, save_params=True,
+                                                                        save_dir=self.save_dir, early_stopping=True,
+                                                                        verbose=True,
+                                                                        lambda_alpha=lam_alpha, lambda_theta=lam_theta,
+                                                                        lambda_beta=lam_beta,
+                                                                        lambda_gamma_p=lam_gamma_p,
+                                                                        lambda_gamma_n=lam_gamma_n, c0=c0,
+                                                                        c1=c1)  # lambda_gamma = 1e-1
+            coder.fit(self.train_data, self.X_sppmi, self.X_neg_sppmi, vad_data=self.vad_data, batch_users=300,
+                      k=vad_K,
+                      clear_invalid=True, n_jobs=16)
+
+            self.test_data.data = np.ones_like(self.test_data.data)
+            params = np.load(os.path.join(self.save_dir, 'CoFacto_K%d_separated.npz' % (n_components)))
+            U, V = params['U'], params['V']
+            (recall100, ndcg100, map100) = self.local_alone_eval(U, V)
+            model_out_name = 'Separated_Model3_K100_%srecall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (fold, recall100, ndcg100, map100)
+            np.savez(model_out_name, U=U, V=V)
+
+        if type == 'separatedmcf':
+            print 'positive and negative project embedding + positive user embedding'
+            mu_p_p = float(kwargs.get('mu_p_p', 0.4))
+            mu_p_n = float(kwargs.get('mu_p_n', 0.4))
+            mu_u_p = float(kwargs.get('mu_u_p', -1.0))
+            if mu_u_p == -1.0:
+                mu_u_p = 1.0 - mu_p_p - mu_p_n
+
+            print 'mu_u_p = %.1f, mu_p_p = %.1f, mu_p_n = %.1f' % (mu_u_p, mu_p_p, mu_p_n)
+            print self.save_dir
+            self.clean_savedir()
+
+            coder = separatedmymodel5.SeparatedParallelMFPosUserPosNegProjectEmbedding(mu_u_p=mu_u_p, mu_p_p=mu_p_p, mu_p_n=mu_p_n,
+                                                                     n_components=n_components, max_iter=max_iter,
+                                                                     batch_size=1000, init_std=0.01, dtype=np.float32,
+                                                                     n_jobs=n_jobs,
+                                                                     random_state=98765, save_params=True,
+                                                                     save_dir=self.save_dir, early_stopping=True,
+                                                                     verbose=True,
+                                                                     lambda_alpha=lam_alpha, lambda_theta_p=lam_theta_p,
+                                                                     lambda_beta=lam_beta, lambda_gamma_p=lam_gamma_p,
+                                                                     lambda_gamma_n=lam_gamma_n,
+                                                                     c0=c0, c1=c1)
+            coder.fit(self.train_data, self.X_sppmi, self.X_neg_sppmi, self.Y_sppmi,
+                      vad_data=self.vad_data, batch_users=300, k=vad_K, clear_invalid=True, n_jobs=16)
+
+            self.test_data.data = np.ones_like(self.test_data.data)
+            params = np.load(os.path.join(self.save_dir, 'CoFacto_K%d_separated.npz' % (n_components)))
+            U, V = params['U'], params['V']
+            (recall100, ndcg100, map100) = self.local_alone_eval(U, V)
+            model_out_name = 'Separated_Model5_K100_%srecall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (fold, recall100, ndcg100, map100)
+            np.savez(model_out_name, U=U, V=V)
+
     def run(self, type, n_jobs = 8, n_components = 100, max_iter = 50, vad_K = 100):
         lam_alpha = lam_beta = 1e-1
         lam_theta = lam_gamma = 1e-1
@@ -401,7 +505,7 @@ class ModelTuning:
             print 'Best with mu_u_p = %.2f and mu_u_n = %.2f' % (best_mu_u_p, 1.0 - best_mu_u_p)
             model_out_name = 'Model4_K100_best_ndcd10_%.4f.npz' % (best_ndcg_10)
             np.savez(model_out_name, U=best_U, V=best_V)
-        if type == 'mcf':
+        if type == 'model5':
             print 'positive and negative project embedding + positive user embedding'
             best_mu_u_p = 0.0
             best_mu_p_p = 0.0
