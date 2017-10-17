@@ -7,7 +7,7 @@ import rec_eval as rec_eval
 import ranked_rec_eval as ranked_eval
 import ranked_rec_eval_range as ranked_eval2
 from scipy import sparse
-DEBUG_MODE = True
+DEBUG_MODE = False
 DATA_DIR = 'data/rec_data/all'
 model_names = []
 # model_names.append('Model2_K100_0.0287.npz')

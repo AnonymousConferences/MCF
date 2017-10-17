@@ -28,11 +28,11 @@ produce_negative_cooccurrence.py
 
 4. Run the MCF model:
 ```
-python mcf_preprocess.py 0 mcf 1
+python mcf_rec.py 0 mcf 1
 ```
 
 5. Run the cofactor model:
 ```
-python mcf_preprocess.py 0 cofactor 1
+python mcf_rec.py 0 cofactor 1
 ```
 

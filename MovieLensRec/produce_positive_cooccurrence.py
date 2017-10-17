@@ -40,7 +40,7 @@ else:
 if ACTIVE_CATE_PREFIX == '':
     NEG_SAMPLE_MODE=''
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'

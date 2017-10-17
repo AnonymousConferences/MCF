@@ -19,7 +19,7 @@ sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu
 
 t1 = time.time()
 
-DEBUG_MODE = True
+DEBUG_MODE = False
 REVERSE = True # if set to true, project with larger timestamp will have smaller id
 
 def timestamp_to_date(timestamp):

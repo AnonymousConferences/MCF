@@ -17,7 +17,7 @@ from scipy import sparse
 import seaborn as sns
 
 sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
-DEBUG_MODE = True
+DEBUG_MODE = False
 NEGATIVE_SELECTION_MODE = 'active_other' #active_all or active_cate or active_other (active_all = active_cate + active_other)
 DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:

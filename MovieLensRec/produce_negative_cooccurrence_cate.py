@@ -21,7 +21,7 @@ from scipy import sparse
 import seaborn as sns
 
 sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
-DEBUG_MODE = True
+DEBUG_MODE = False
 DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
