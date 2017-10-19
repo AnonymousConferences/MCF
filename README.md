@@ -39,7 +39,7 @@ Running:
 
 For example:
 ```
-cp *.py TasterProfile
+cp *.py TasterProfile/
 ```
 
 1. Preprocess the data by running the script mcf_preprocess.py
