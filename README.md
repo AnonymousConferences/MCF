@@ -30,8 +30,8 @@ You should download the 4 datasets: [MovieLens 20M](https://grouplens.org/datase
 
 Then decompress the data.
 
-For example, with TasteProfile dataset, after downloading it, make a data/rec_data/all path in TasteProfile folder and extract the train_triplets.txt into it.
-The file path will be TasteProfile/data/rec_data/all/train_triplets.txt
+For example, with TasteProfile dataset, after downloading it, make a `data/rec_data/all` path in TasteProfile folder and extract the `train_triplets.txt` into it.
+The file path will be `TasteProfile/data/rec_data/all/train_triplets.txt`
 
 Running:
 ------------------------------------------
