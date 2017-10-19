@@ -9,13 +9,9 @@ We used the WMF implementation at [here] (https://github.com/dawenl/cofactor/blo
 We adapted the ranking metrics from Liang at [here] ((https://github.com/dawenl/cofactor))
 
 Four folders MovieLensRec, TasteProfile, YahooMusic, KickstarterRec contain the preprocessing steps for each of 4 datasets: 
-
 [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/), 
-
 [Taste Profile](https://labrosa.ee.columbia.edu/millionsong/tasteprofile), 
-
 [Yahoo Music Rating R1](https://webscope.sandbox.yahoo.com/catalog.php?datatype=r&did=1) and 
-
 [Kickstarter]()
 
 RUNNING RECOMMENDATION:
