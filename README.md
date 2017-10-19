@@ -23,7 +23,17 @@ cofactor.py is the implementation of cofactor model
 content_wmf.py is the implementation of wmf model
 ```
 
-RUNNING RECOMMENDATION:
+Preparing the datasets:
+-----------------------
+
+You should download the 4 datasets: [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/), [Taste Profile](https://labrosa.ee.columbia.edu/millionsong/tasteprofile), [Yahoo Music Rating R1](https://webscope.sandbox.yahoo.com/catalog.php?datatype=r&did=1) and [Kickstarter](https://drive.google.com/drive/folders/0B7caFrTiN5gMbkRGQnZ6R1BzQ0E?usp=sharing) before hand.
+
+Then decompress the data.
+
+For example, with TasteProfile dataset, after downloading it, make a data/rec_data/all path in TasteProfile folder and extract the train_triplets.txt into it.
+The file path will be TasteProfile/data/rec_data/all/train_triplets.txt
+
+Running:
 ------------------------------------------
 0. copy the mcf source code into each data processing folder.
 
