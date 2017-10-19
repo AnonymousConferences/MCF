@@ -1,5 +1,8 @@
 import sys
 
+sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
+sys.path.append(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')
+sys.path.append(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
 import itertools
 import glob
 import os
@@ -19,7 +22,7 @@ import seaborn as sns
 
 sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
 DEBUG_MODE = False
-NEGATIVE_SELECTION_MODE = 'active_cate' #active_all or active_cate or active_other (active_all = active_cate + active_other)
+NEGATIVE_SELECTION_MODE = 'active_all' #active_all or active_cate
 DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
@@ -58,13 +61,13 @@ vad_data, vad_raw, vad_df = load_data(os.path.join(DATA_DIR, 'validation-cate.cs
 
 test_data, test_raw, test_df = load_data(os.path.join(DATA_DIR, 'test-cate.csv'))
 if len(glob.glob(os.path.join(DATA_DIR, 'project_ts_df.csv'))) <= 0:
-    project_ts_df_train = train_df[['pid', 'timestamp', 'timestamp_end', 'category']]
+    project_ts_df_train = train_df[['pid', 'timestamp', 'timestamp_end']]
     # project_ts_df_train = project_ts_df_train.drop_duplicates(cols='pid').sort_index(by='pid', ascending=True)
     project_ts_df_train = project_ts_df_train.drop_duplicates('pid').sort_index(by='pid', ascending=True)
-    project_ts_df_vad = vad_df[['pid', 'timestamp', 'timestamp_end', 'category']]
+    project_ts_df_vad = vad_df[['pid', 'timestamp', 'timestamp_end']]
     # project_ts_df_vad = project_ts_df_vad.drop_duplicates(cols='pid').sort_index(by='pid', ascending=True)
     project_ts_df_vad = project_ts_df_vad.drop_duplicates('pid').sort_index(by='pid', ascending=True)
-    project_ts_df_test = test_df[['pid', 'timestamp', 'timestamp_end', 'category']]
+    project_ts_df_test = test_df[['pid', 'timestamp', 'timestamp_end']]
     # project_ts_df_test = project_ts_df_test.drop_duplicates(cols='pid').sort_index(by='pid', ascending=True)
     project_ts_df_test = project_ts_df_test.drop_duplicates('pid').sort_index(by='pid', ascending=True)
     test_data.data = np.ones_like(test_data.data)
@@ -86,26 +89,17 @@ print 'Project_ts_df took: %d mb' %((sys.getsizeof(project_ts_df))/(1024*1024))
 # user 1: project 1, project 2, ... project k --> project 1, 2, ..., k will be seen as a sentence ==> do co-occurrence.
 np.random.seed(98765)  # set random seed
 
-def select_negative_words(project_ts_df, train_df, id, type='active_all', obj='project', selection_mode = 'micro'):
+def select_negative_words(project_ts_df, train_df, id, type='active_all', obj='project'):
     all_neg_active_words = []
     if obj == 'project':
         positive_words = train_df.loc[train_df.bid == id].pid
         for positive_word in positive_words:
             timestamp, timestamp_end = project_ts_df.loc[positive_word, ['timestamp', 'timestamp_end']]
-
             negative_active_words = project_ts_df.loc[((project_ts_df.timestamp >= timestamp) &
                                               (project_ts_df.timestamp <= timestamp_end)) |
                                              ((project_ts_df.timestamp_end >= timestamp) &
                                               (project_ts_df.timestamp_end <= timestamp_end))
                                             ,'pid']
-            #select projects that are not in the category of positive_word: ==> this is used for macro
-            if selection_mode == 'micro' and type != 'active_all' :
-                cate = project_ts_df[project_ts_df.pid==positive_word].drop_duplicates('pid').category.values
-                temp_df = project_ts_df[project_ts_df['pid'].isin(list(negative_active_words))]
-                if type == 'active_other':
-                    negative_active_words = temp_df.loc[~temp_df['category'].isin(cate), 'pid']
-                if type == 'active_cate':
-                    negative_active_words = temp_df.loc[temp_df['category'].isin(cate), 'pid']
             all_neg_active_words.extend(negative_active_words)
         all_neg_active_words = set(all_neg_active_words) - set(positive_words)
     else:
@@ -115,7 +109,7 @@ def select_negative_words(project_ts_df, train_df, id, type='active_all', obj='p
                                                    (project_ts_df.timestamp <= timestamp_end)) |
                                                   ((project_ts_df.timestamp_end >= timestamp) &
                                                    (project_ts_df.timestamp_end <= timestamp_end))
-                                                    , 'pid']
+        , 'pid']
         all_neg_active_words.extend(negative_active_words)
     all_neg_active_words = sorted(set(all_neg_active_words))
     if type == 'active_all':
@@ -124,18 +118,15 @@ def select_negative_words(project_ts_df, train_df, id, type='active_all', obj='p
         else:
             #get all users backed the projects in all_active_words
             return sorted(set(train_df.bid[train_df['pid'].isin(all_neg_active_words)]))
-    elif type == 'active_cate':
+    else:
         #select all negative projects from the categories that the user invested
         if obj == 'project':
-            if selection_mode == 'macro':
-                #first get all categories the user backed:
-                backed_cates = train_df[train_df.bid==id].drop_duplicates('category').category
-                # print backed_cates
-                cate_neg_lst_words = sorted(set(train_df.pid[train_df['category'].isin(backed_cates)]))
-                cate_neg_lst_words = set(cate_neg_lst_words).intersection(set(all_neg_active_words))
-            else:
-                cate_neg_lst_words = all_neg_active_words
-
+            #first get all categories the user backed:
+            backed_cates = train_df[train_df.bid==id].drop_duplicates('category').category
+            # print backed_cates
+            cate_neg_lst_words = sorted(set(train_df.pid[train_df['category'].isin(backed_cates)]))
+            cate_neg_lst_words = set(cate_neg_lst_words).intersection(set(all_neg_active_words))
+            # print negative_lst_words
         elif obj == 'backer':
             category = train_df[train_df.pid ==id].drop_duplicates('category').category
             #get all users backed the [category]
@@ -143,20 +134,12 @@ def select_negative_words(project_ts_df, train_df, id, type='active_all', obj='p
             #get all users backed projects in all_neg_active_words:
             neg_active_users = sorted(set(train_df.bid[train_df['pid'].isin(all_neg_active_words)]))
             cate_neg_lst_words = set(cate_neg_lst_words).intersection(set(neg_active_users))
-    else:
-        #active other:
-        if obj == 'project':
-            #first get all categories the user backed:
-            if selection_mode == 'macro':
-                backed_cates = train_df[train_df.bid==id].drop_duplicates('category').category
-                cate_neg_lst_words = sorted(set(train_df.pid[train_df['category'].isin(backed_cates)]))
-                cate_neg_lst_words = set(all_neg_active_words) - set(cate_neg_lst_words)
-            else:
-                #micro:
-                cate_neg_lst_words = all_neg_active_words
     return cate_neg_lst_words
 
-
+#cleaning folder:
+lst = glob.glob(os.path.join(DATA_DIR, 'negative-co-temp', '*.npy'))
+for f in lst:
+    os.remove(f)
 def _negative_coord_batch(project_ts_df, lo, hi, train_data, train_df, prefix='project', max_neighbor_words=50,
                           choose='macro', type='category', obj = 'project'):
     rows = []
@@ -199,11 +182,6 @@ batch_size = 5000
 
 GENERATE_NEGATIVE_PROJECT_PROJECT_COOCCURENCE_FILE = True
 if GENERATE_NEGATIVE_PROJECT_PROJECT_COOCCURENCE_FILE:
-    # cleaning folder:
-    lst = glob.glob(os.path.join(DATA_DIR, 'negative-co-temp', '*.npy'))
-    for f in lst:
-        os.remove(f)
-
     t1 = time.time()
     print 'Generating negative project project co-occurrence matrix'
     start_idx = range(0, n_users, batch_size)
@@ -221,18 +199,13 @@ if GENERATE_NEGATIVE_PROJECT_PROJECT_COOCCURENCE_FILE:
 
 GENERATE_NEGATIVE_USER_USER_COOCCURENCE_FILE = False
 if GENERATE_NEGATIVE_USER_USER_COOCCURENCE_FILE:
-    # cleaning folder:
-    lst = glob.glob(os.path.join(DATA_DIR, 'negative-co-temp', '*.npy'))
-    for f in lst:
-        os.remove(f)
-
     t1 = time.time()
     print 'Generating negative user user co-occurrence matrix'
     start_idx = range(0, n_projects, batch_size)
     end_idx = start_idx[1:] + [n_projects]
     Parallel(n_jobs=16)(
         delayed(_negative_coord_batch)(project_ts_df, lo, hi, train_data.T, train_df,
-                                       prefix='%s-backer'%NEGATIVE_SELECTION_MODE, type = NEGATIVE_SELECTION_MODE, obj = 'project')
+                                       prefix='backer', type = NEGATIVE_SELECTION_MODE, obj = 'project')
         for lo, hi in zip(start_idx, end_idx))
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
@@ -263,7 +236,7 @@ if BOOLEAN_NEGATIVE_LOAD_PP_COOCC_FROM_FILE:
     start_idx = range(0, n_users, batch_size)
     end_idx = start_idx[1:] + [n_users]
     X_neg = _load_negative_coord_matrix(start_idx, end_idx, n_projects, n_projects,
-                           prefix='%s-project'%NEGATIVE_SELECTION_MODE)  # project project co-occurrence matrix
+                           prefix='project')  # project project co-occurrence matrix
     print X_neg
     print 'dumping matrix ...'
     text_utils.save_pickle(X_neg, os.path.join(DATA_DIR, '%s_negative_pro_pro_cooc.dat'%NEGATIVE_SELECTION_MODE))
@@ -349,3 +322,6 @@ print 'Time : %d seconds' % (t2 - t1)
 
 
 
+sys.path.remove(r'/media/thanhtd/Data/thanh-repo/PenStateCollaboration2016/python/PenRecProject/utils')
+sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec/utils')
+sys.path.remove(r'/home/thanh/PenStateCollaboration2016/python/KickstarterRec')

@@ -179,7 +179,7 @@ class ModelTuning:
             (recall100, ndcg100, map100) = self.local_alone_eval(U, V)
             model_out_name = 'Model4_K100_recall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (recall100, ndcg100, map100)
             np.savez(model_out_name, U=U, V=V)
-        if type == 'mcf':
+        if type == 'model5':
             print 'positive and negative project embedding + positive user embedding'
             mu_p_p = float(kwargs.get('mu_p_p', 0.4))
             mu_p_n = float(kwargs.get('mu_p_n', 0.4))
@@ -329,7 +329,7 @@ class ModelTuning:
             (recall100, ndcg100, map100) = self.local_alone_eval(U, V)
             model_out_name = 'Separated_Model3_K100_recall100_%.4f_ndcg100_%.4f_map100_%.4f.npz' % (recall100, ndcg100, map100)
             np.savez(model_out_name, U=U, V=V)
-        if type == 'separatedmcf':
+        if type == 'separatedmodel5':
             print 'positive and negative project embedding + positive user embedding'
             mu_p_p = float(kwargs.get('mu_p_p', 0.4))
             mu_p_n = float(kwargs.get('mu_p_n', 0.4))
@@ -494,7 +494,7 @@ class ModelTuning:
             print 'Best with mu_u_p = %.2f and mu_u_n = %.2f' % (best_mu_u_p, 1.0 - best_mu_u_p)
             model_out_name = 'Model4_K100_best_ndcd10_%.4f.npz' % (best_ndcg_10)
             np.savez(model_out_name, U=best_U, V=best_V)
-        if type == 'mcf':
+        if type == 'model5':
             print 'positive and negative project embedding + positive user embedding'
             best_mu_u_p = 0.0
             best_mu_p_p = 0.0

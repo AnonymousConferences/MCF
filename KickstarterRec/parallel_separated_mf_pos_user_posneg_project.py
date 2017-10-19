@@ -114,38 +114,23 @@ class SeparatedParallelMFPosUserPosNegProjectEmbedding(BaseEstimator, Transforme
 
         self.vad_ndcg = -np.inf
         # learn item first:
-        for iter in range(self.max_iter):
-            print '*********** Learning item factors ***********'
-            # for i in xrange(iter):
+        print '*********** Learning item factors ***********'
+        for i in xrange(self.max_iter):
             if self.verbose:
-                print('ITERATION #%d' % iter)
+                print('ITERATION #%d' % i)
             self._update_separate_item_factors(XP, XPT, XN, XNT, FXP, FXPT, FXN, FXNT)
             self._update_item_biases(XP, XPT, XN, XNT, FXP, FXPT, FXN, FXNT)
 
-            # now we update user's latent representation.
-            print '*********** Learning user factors ***********'
-            for i in xrange(self.max_iter):
-                if self.verbose:
-                    print('ITERATION #%d' % i)
-                self._update_separate_user_factors(M, YP, YPT, FYP, FYPT)
-                self._update_user_biases(YP, YPT, FYP, FYPT)
-            if vad_data is not None:
-                vad_ndcg = self._validate(M, vad_data, **kwargs)
-                if self.early_stopping and self.vad_ndcg > vad_ndcg:
-                    break  # we will not save the parameter for this iteration
-                self.vad_ndcg = vad_ndcg
-
+        # now we update user's latent representation.
+        print '*********** Learning user factors ***********'
+        for i in xrange(self.max_iter):
+            if self.verbose:
+                print('ITERATION #%d' % i)
+            self._update_separate_user_factors(M, YP, YPT, FYP, FYPT)
+            self._update_user_biases(YP, YPT, FYP, FYPT)
         if self.save_params:
             self._save_params()
         pass
-    def _validate(self, M, vad_data, **kwargs):
-        vad_ndcg = rec_eval.parallel_normalized_dcg_at_k(M, vad_data,
-                                                self.alpha,
-                                                self.beta,
-                                                **kwargs)
-        if self.verbose:
-            print('\tValidation NDCG@k: %.5f' % vad_ndcg)
-        return vad_ndcg
     def _update_separate_item_factors(self, XP, XPT, XN, XNT, FXP, FXPT, FXN, FXNT):
         if self.verbose:
             start_t = _writeline_and_time('\tUpdating project factors...')

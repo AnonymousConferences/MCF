@@ -45,8 +45,8 @@ class MFPositiveUserProjectEmbedding(BaseEstimator, TransformerMixin):
         **kwargs: dict
             Model hyperparameters
         '''
-        self.mu_u = mu_u
-        self.mu_p = mu_p
+        self.mu_u_p = mu_u_p
+        self.mu_u_n = mu_u_n
         self.n_components = n_components
         self.max_iter = max_iter
         self.batch_size = batch_size

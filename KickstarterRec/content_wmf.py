@@ -3,6 +3,7 @@ import time
 
 import numpy as np
 from scipy import weave
+#import weave
 
 import batched_inv_joblib
 import rec_eval

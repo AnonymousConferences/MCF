@@ -133,7 +133,7 @@ class UserFactorUpdateWorker(threading.Thread):
                 a = m_u.dot(self.parent.c1 * B_p) + self.parent.mu_u_n * np.dot(rsd, T_j)
                 A = self.parent.BTBpR + B_p.T.dot((self.parent.c1 - self.parent.c0) * B_p) + TTT
                 alpha_batch[ui] = LA.solve(A, a)
-            return alpha_batch
+
         elif self.parent.mode == "hybird":
             print 'Hybrid mode'
             for ui, u in enumerate(xrange(self.lo, self.hi)):
@@ -323,10 +323,10 @@ class ProjectFactorUpdateWorker(threading.Thread):
                     GTG_n = G_i_n.T.dot(G_i_n)
 
                 B = self.parent.TTTpR + A_u.T.dot((self.parent.c1 - self.parent.c0) * A_u) + \
-                    GTG_p + \
+                    self.parent.mu_p_p *GTG_p + \
                     self.parent.mu_p_n *GTG_n
                 a = m_u.dot(self.parent.c1 * A_u) + self.parent.mu_p_p * np.dot(rsd_p, G_i_p) + \
-                                                    np.dot(rsd_n, G_i_n)
+                                                    self.parent.mu_p_n * np.dot(rsd_n, G_i_n)
 
                 beta_batch[pi] = LA.solve(B, a)
 
@@ -426,7 +426,7 @@ class UpdateBiasParallel:
 
 
     def run(self):
-        self.bias = np.zeros(self.n, dtype=self.main_factor.dtype)
+        self.bias_update = np.zeros(self.n, dtype=self.main_factor.dtype)
         step = int(self.n/self.n_jobs)
         self.threads = []
         for i in range(0, self.n_jobs):
@@ -441,7 +441,7 @@ class UpdateBiasParallel:
             t.start()
         for t in self.threads:
             t.join()
-        return self.bias
+        return self.bias_update
 
 class BiasUpdateWorker(threading.Thread):
     def __init__(self, name, parent, lo, hi):
@@ -468,7 +468,7 @@ class BiasUpdateWorker(threading.Thread):
                 else:
                     bias_batch[ib] = 0.
         self.parent.thread_lock.acquire()
-        self.parent.bias[self.lo:self.hi] = bias_batch
+        self.parent.bias_update[self.lo:self.hi] = bias_batch
         self.parent.thread_lock.release()
 
 
@@ -536,5 +536,5 @@ class InterceptUpdateWorker(threading.Thread):
                 if rsd.size > 0:
                      res += rsd.sum()
         self.parent.thread_lock.acquire()
-        self.parent.intercept[self.thread_id] = res
+        self.parent.intercept[self.thread_id] = res*self.parent.mu
         self.parent.thread_lock.release()

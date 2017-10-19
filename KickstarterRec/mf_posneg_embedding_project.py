@@ -19,8 +19,6 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
         '''
         Parameters
         ---------
- 	mu_p_p : a hyperparameter for controlling the affect of positive project embedding
-        mu_p_n : a hyperparameter for controlling the affect of negative project embeddin
         n_components : int
             Number of latent factors
         max_iter : int
@@ -70,6 +68,13 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
 
     def _parse_kwargs(self, **kwargs):
         ''' Model hyperparameters
+        Parameters
+        ---------
+        lambda_alpha, lambda_beta, lambda_gamma: float
+            Regularization parameter for user (lambda_alpha), item factors (
+            lambda_beta), and context factors (lambda_gamma).
+        c0, c1: float
+            Confidence for 0 and 1 in Hu et al., c0 must be less than c1
         '''
         self.lam_alpha = float(kwargs.get('lambda_alpha', 1e-5))
         self.lam_beta = float(kwargs.get('lambda_beta', 1e-5))
@@ -107,6 +112,25 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
         # print 'Initial global_x: \n', self.global_x
 
     def fit(self, M, X = None, Y = None, FX=None, FY = None, vad_data=None, **kwargs):
+        '''Fit the model to the data in M.
+        Parameters
+        ----------
+        M : scipy.sparse.csr_matrix, shape (n_users, n_projects)
+            Training click matrix.
+        X : scipy.sparse.csr_matrix, shape (n_projects, n_projects)
+            Training co-occurrence matrix.
+        F : scipy.sparse.csr_matrix, shape (n_projects, n_projects)
+            The weight for the co-occurrence matrix. If not provided,
+            weight by default is 1.
+        vad_data: scipy.sparse.csr_matrix, shape (n_users, n_projects)
+            Validation click data.
+        **kwargs: dict
+            Additional keywords to evaluation function call on validation data
+        Returns
+        -------
+        self: object
+            Returns the instance itself.
+        '''
         n_users, n_projects = M.shape
         assert X.shape == (n_projects, n_projects)
 
@@ -176,9 +200,9 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
                                 mu_p_p = self.mu_p_p, mu_p_n = self.mu_p_n)
 
         if self.verbose:
-            print('\r\tUpdating project factors: time=%.2f'
+            print('\r\tUpdating user embedding factors: time=%.2f'
                   % (time.time() - start_t))
-            start_t = _writeline_and_time('\tUpdating positive project embedding factors...')
+            start_t = _writeline_and_time('\tUpdating project embedding factors...')
         # here it really should be X^T and FX^T, but both are symmetric
         self.gamma_p = update_embedding_factor(self.beta,
                                              self.bias_d_p, self.bias_e_p, self.global_x_p,
@@ -188,9 +212,9 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
                                              mu_p=self.mu_p_p)
 
         if self.verbose:
-            print('\r\tUpdating positive project embedding factors: time=%.2f'
+            print('\r\tUpdating project factors: time=%.2f'
                   % (time.time() - start_t))
-            start_t = _writeline_and_time('\tUpdating negative project embedding factors...')
+            start_t = _writeline_and_time('\tUpdating user embedding factors...')
         self.gamma_n = update_embedding_factor(self.beta,
                                              self.bias_d_n, self.bias_e_n, self.global_x_n,
                                              XNT, FXNT, self.lam_gamma_n,
@@ -199,8 +223,11 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
                                              mu_p=self.mu_p_n)
 
         if self.verbose:
-            print('\r\tUpdating negative project embedding factors: time=%.2f'
+            print('\r\tUpdating project embedding factors: time=%.2f'
                   % (time.time() - start_t))
+
+
+
         pass
 
     def _update_biases(self, XP, XPT, XN, XNT, FXP, FXPT, FXN, FXNT):
@@ -253,7 +280,7 @@ class MFPositiveNegativeProjectEmbedding(BaseEstimator, TransformerMixin):
         '''Save the parameters'''
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
-        filename = 'MyModel_K%d_iter%d.npz' % (self.n_components, iter)
+        filename = 'CoFacto_K%d_iter%d.npz' % (self.n_components, iter)
         np.savez(os.path.join(self.save_dir, filename), U=self.alpha,
                  V=self.beta)
 
@@ -274,6 +301,7 @@ def get_row(Y, i):
 
 def update_alpha(beta, M, c0, c1, lam_alpha,
                  n_jobs = 8, batch_size=1000):
+    '''Update user latent factors'''
     m, n = M.shape  # m: number of users, n: number of items
     f = beta.shape[1]  # f: number of factors
 
@@ -306,6 +334,7 @@ def update_beta(alpha, gamma_p, gamma_n,
                 MT, XP, FXP, XN, FXN,
                 c0, c1, lam_beta,
                 n_jobs, batch_size=1000, mu_p_p = 1, mu_p_n = 1):
+    '''Update item latent factors/embeddings'''
     n, m = MT.shape  # m: number of users, n: number of projects
     f = alpha.shape[1]
     assert alpha.shape[0] == m
@@ -357,7 +386,8 @@ def _solve_weighted_project_cofactor(lo, hi, alpha, gamma_p, gamma_n,
         else:
             GTG_n = G_i_n.T.dot(G_i_n)
 
-        B = TTTpR + A_u.T.dot((c1 - c0) * A_u) + GTG_p + GTG_n
+        # B = TTTpR + A_u.T.dot((c1 - c0) * A_u) + GTG_p + GTG_n
+        B = TTTpR + A_u.T.dot((c1 - c0) * A_u) + mu_p_p * GTG_p + mu_p_n * GTG_n
         a = m_u.dot(c1 * A_u) + mu_p_p*np.dot(rsd_p, G_i_p) + mu_p_n*np.dot(rsd_n, G_i_n)
 
         beta_batch[pi] = LA.solve(B, a)
@@ -370,7 +400,8 @@ def _solve_weighted_project_cofactor(lo, hi, alpha, gamma_p, gamma_n,
 
 def update_embedding_factor(beta, bias_d, bias_e, global_x, XT, FXT, lam_gamma,
                  n_jobs, batch_size=1000, mu_p = 1):
-    n, f = beta.shape  # n: number of projects, f: number of factors
+    '''Update context latent factors'''
+    n, f = beta.shape  # n: number of items, f: number of factors
 
     start_idx = range(0, n, batch_size)
     end_idx = start_idx[1:] + [n]
@@ -404,6 +435,8 @@ def _solve_embedding_factor(lo, hi, beta, bias_d, bias_e, global_x, XT, FXT, f, 
 
 def update_bias(beta, gamma, bias_e, global_x, X, FX, n_jobs = 8, batch_size=1000,
                         mu = 1):
+    ''' Update the per-item (or context) bias term.
+    '''
     n = beta.shape[0]
 
     start_idx = range(0, n, batch_size)

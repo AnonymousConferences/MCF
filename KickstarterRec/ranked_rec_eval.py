@@ -33,22 +33,7 @@ should only be used when calculating test scores
 #     for i in range(0, nrow):
 #         max_item_backed_train[i] = np.max(train_data[i].nonzero())
 #         max_item_backed_vad[i]   = np.max(vad_data[i].nonzero())
-project_ts_df = None
-def clear_invalid_project(train_data, vad_data, X_pred, lo, hi):
-    for i, ui in enumerate(xrange(lo, hi)):
-        tmp = project_ts_df.copy()
-        invalid_projs = []
-        train_backed_proj = train_data[ui].nonzero()[1]
-        max_backed_ts_train = np.max(project_ts_df.loc[train_backed_proj, 'timestamp'])
-        if vad_data != None:
-            vad_backed_proj = vad_data[ui].nonzero()[1]
-            max_backed_ts_vad = np.max(project_ts_df.loc[vad_backed_proj, 'timestamp'])
-            max_backed_ts_train = max(max_backed_ts_train, max_backed_ts_vad)
-        tmp['is_valid'] = tmp['timestamp_end'] > max_backed_ts_train
-        invalid_projs.extend(tmp[tmp.is_valid == False].pid)
-        invalid_projs.extend(train_backed_proj)
-        X_pred[i, invalid_projs] = 0.0
-    return X_pred
+
 def single_recall_at_k(X_true_binary, X_pred, k):
     idx = bn.argpartition(-X_pred, k) #find the partition (indexes) so that the first k elements are smallest.
     X_pred_binary = np.zeros_like(X_pred, dtype=bool)
@@ -140,16 +125,16 @@ def batch_recall_at_k(heldout_batch, X_pred, lo, hi, k):
     idx = bn.argpartition(-X_pred, k, axis=1)
     X_pred_binary = np.zeros_like(X_pred, dtype=bool)
     X_pred_binary[np.arange(hi - lo)[:, np.newaxis], idx[:, :k]] = True
-    # X_pred_binary[X_pred <= 0] = False # add this line is important?
+    X_pred_binary[X_pred <= 0] = False # add this line is important?
 
-    X_true_binary = (heldout_batch > 0).toarray()
+    X_true_binary = heldout_batch
     tmp = (np.logical_and(X_true_binary, X_pred_binary).sum(axis=1)).astype(np.float32)
     recall = tmp / np.minimum(k, X_true_binary.sum(axis=1))
     return recall
-def rank_func(pro_df, weight = 0.1, to=86400.0):
+def rank_func(pro_df, weight = 2.0, to=86400.0):
     pro_df['ranking_score'] = pro_df.apply(lambda row:(row['alpha-dot-beta'] + weight*math.exp(-row['delta_t']/to)
                                                        if row['step_func_val']
-                                                       else row['alpha-dot-beta']),
+                                                       else 0),
                                            axis = 1)
     return pro_df['ranking_score'].values
     # return pro_df['alpha-dot-beta'].values
@@ -224,56 +209,6 @@ def extract_prediction_res(model_temp_path, lo, hi, project_ts_df, train_data,
         np.savez(pred_file, X_ranked_pred = X_ranked_pred)
         return X_ranked_pred
 
-def extract_prediction_res2(model_temp_path, lo, hi, project_ts_df, train_data,
-                          U, V, vad_data = None, threshold = 0.5, weight=2.0, to = 86400.0, num_windows = 100):
-    pred_file = os.path.join(model_temp_path, 'X_pred_lo_%d_hi_%d_threshold_%.2f_weight_%.2f_to_%d.npz'
-                             %(lo, hi, threshold, weight, to))
-    if os.path.isfile(pred_file):
-        X_ranked_pred = np.load(pred_file)['X_ranked_pred']
-        return X_ranked_pred
-    else:
-        X_ranked_pred = _make_prediction(train_data, U, V.T, slice(lo,hi), hi-lo, mu=None, vad_data=vad_data)
-
-        for i, ui in enumerate(xrange(lo, hi)):
-            tmp = project_ts_df.copy()
-            invalid_projs = []
-
-            train_backed_proj = train_data[ui].nonzero()[1]
-            invalid_projs.extend(train_backed_proj)
-            max_backed_ts_train = np.max(tmp.loc[train_backed_proj, 'timestamp'])
-
-            max_backed_ts_vad = 0
-            if vad_data != None:
-                vad_backed_proj = vad_data[ui].nonzero()[1]
-                max_backed_ts_vad = np.max(tmp.loc[vad_backed_proj, 'timestamp'])
-                invalid_projs.extend(vad_backed_proj)
-            max_backed_ts = max(max_backed_ts_train, max_backed_ts_vad)
-            tmp['is_valid'] = tmp['timestamp_end'] > max_backed_ts
-            invalid_projs.extend(tmp[tmp.is_valid == False].pid)
-
-            # clear invalid projects (.e.g. ended projects)
-            X_ranked_pred[i, invalid_projs] = 0.0
-
-            tmp['t_timestamp'] = max_backed_ts - tmp.timestamp
-            tmp['t_timestamp_end'] = tmp.timestamp_end - max_backed_ts
-            # print tmp
-            # tmp['is_valid'] = (tmp['t_timestamp_end'] > 0).values
-
-            # tmp['step_func_val'] = np.logical_and((tmp['t_timestamp_end'] > 0).values, X_pred[i,] > threshold)
-            tmp['step_func_val'] = X_ranked_pred[i,] > threshold
-            # if (i == 0):
-            #     print X_ranked_pred[i,0:20]
-            if sum(tmp['step_func_val']) <= 0: continue
-            # print 'get here'
-            tmp['delta_t'] = tmp[['t_timestamp_end', 't_timestamp']].abs().min(axis=1)
-            tmp['alpha-dot-beta'] = X_ranked_pred[i]
-            # tmp['ranking_score'] = tmp['alpha-dot-beta'] ######## ADDDDDD NEWWWWWWW
-
-            ranking_lst = rank_func(tmp, weight, to)
-            X_ranked_pred[i] = ranking_lst
-
-        np.savez(pred_file, X_ranked_pred = X_ranked_pred)
-        return X_ranked_pred
 
 def make_prediction_batch(model_temp_path, lo, hi, project_ts_df, train_data, heldout_data, heldout_data_df,
                           U, V, vad_data = None, threshold = 0.5, k = 10, weight=2.0, to = 86400.0):
@@ -338,18 +273,16 @@ def make_prediction_batch2(model_temp_path, lo, hi, project_ts_df, train_data, h
     end_idx = start_idx[1:] + [hi]
 
     for local_lo, local_hi in zip(start_idx, end_idx):
-        X_ranked_pred = extract_prediction_res2(ranked_prediction_path, local_lo, local_hi, project_ts_df,
+        X_ranked_pred = extract_prediction_res(ranked_prediction_path, local_lo, local_hi, project_ts_df,
                                                train_data, U, V, vad_data, threshold, weight, to)
 
-        recall_batch[local_lo-lo:local_hi-lo] = batch_recall_at_k(heldout_batch=heldout_data[slice(local_lo,local_hi)],
+        recall_batch[local_lo-lo:local_hi-lo] = batch_recall_at_k(heldout_batch=(heldout_data[slice(local_lo,local_hi)] > 0).toarray(),
                                          X_pred = X_ranked_pred, lo=local_lo, hi=local_hi, k = k)
         ndcg_batch[local_lo-lo:local_hi-lo] = batch_ndcg_at_k(heldout_batch=heldout_data[slice(local_lo,local_hi)],
                                          X_pred = X_ranked_pred, lo=local_lo, hi=local_hi, k = k)
         map_batch[local_lo-lo:local_hi-lo] = batch_map_at_k(heldout_batch=heldout_data[slice(local_lo, local_hi)],
                                          X_pred=X_ranked_pred, lo=local_lo, hi=local_hi, k=k)
-    # print recall_batch
-    # print ndcg_batch
-    # print map_batch
+
     #store to files:
     recall_topk_res_path = os.path.join(model_temp_path, 'recall_topk')
     ndcg_topk_res_path = os.path.join(model_temp_path, 'ndcg_topk')

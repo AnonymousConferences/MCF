@@ -2,7 +2,6 @@ import numpy as np
 import os
 import pandas as pd
 import time
-import sys
 import glob
 import rec_eval_active as rec_eval
 # import ranked_rec_eval as rec_eval
@@ -74,16 +73,14 @@ user_activity = np.asarray(train_data.sum(axis=1)).ravel()
 
 #decide activeness by percentage
 sorted_ua = sorted(user_activity)
-ACTIVE_THRESHOLD = 0.1
+ACTIVE_THRESHOLD = 0.2
 cold_indx = sorted_ua[int(ACTIVE_THRESHOLD*len(sorted_ua)) + 1]
 high_active_indx = sorted_ua[int((1.0-ACTIVE_THRESHOLD)*len(sorted_ua)) + 1]
 active_condition = [0, cold_indx, high_active_indx]
-print active_condition
-sys.exit(1)
 
 total_t1=time.time()
-#topk_range = [5,10,20,50,100]
 topk_range = [5,10,20,50,100]
+#topk_range = [50]
 #active_condition = [0,25,50]
 for model_name in model_names:
     t1 = time.time()

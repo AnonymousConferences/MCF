@@ -43,20 +43,19 @@ def UserFactorUpdateWorker(out_q, lo, hi, beta, theta_p, theta_n,
                 rsd *= f_u
             else:
                 TTT = T_j.T.dot(T_j)
-            ## TTT = mu_u_p * TTT
-            # 
-            #a = m_u.dot(c1 * B_p) + \
-            #    c1*mu_u_p*np.dot(rsd, T_j) #it should be mu_u_p * np.dot(rsd, T_j) but we put more weight for this
-            #    # mu_u_p * np.dot(rsd, T_j)
-            #A = BTBpR + B_p.T.dot((c1 - c0) * B_p) + \
-            #    c1*mu_u_p*TTT
-            #alpha_batch[ui] = LA.solve(A, a)
+            # # TTT = mu_u_p * TTT
+            #
+            # a = m_u.dot(c1 * B_p) + \
+            #     c1*mu_u_p*np.dot(rsd, T_j) #it should be mu_u_p * np.dot(rsd, T_j) but we put more weight for this
+            #     # mu_u_p * np.dot(rsd, T_j)
+            # A = BTBpR + B_p.T.dot((c1 - c0) * B_p) + \
+            #     c1*mu_u_p*TTT
+            # alpha_batch[ui] = LA.solve(A, a)
 
             TTT = mu_u_p * TTT
             a = m_u.dot(c1 * B_p) + np.dot(rsd, T_j)
             A = BTBpR + B_p.T.dot((c1 - c0) * B_p) + TTT
             alpha_batch[ui] = LA.solve(A, a)
-
     elif mode == "negative":
         for ui, u in enumerate(xrange(lo, hi)):
             m_u, idx_m_p = get_row(M, u)

@@ -265,7 +265,7 @@ class MFPositiveUserProjectEmbedding(BaseEstimator, TransformerMixin):
         pass
 
     def _validate(self, M, vad_data, **kwargs):
-        vad_ndcg = rec_eval.normalized_dcg_at_k(M, vad_data,
+        vad_ndcg = rec_eval.parallel_normalized_dcg_at_k(M, vad_data,
                                                 self.alpha,
                                                 self.beta,
                                                 **kwargs)
@@ -337,9 +337,8 @@ def _solve_weighted_user_factor(lo, hi, beta, theta, bias_b, bias_c, global_y,
         else:
             TTT = T_j.T.dot(T_j)
         TTT = mu_u*TTT
-        # a = m_u.dot(c1 * B_p) + np.dot(rsd, T_j)
 
-        a = m_u.dot(c1 * B_p) + mu_u * np.dot(rsd, T_j)
+        a = m_u.dot(c1 * B_p) + np.dot(rsd, T_j)
         A = BTBpR + B_p.T.dot((c1 - c0) * B_p) + TTT
         alpha_batch[ui] = LA.solve(A, a)
     return alpha_batch
@@ -387,8 +386,6 @@ def _solve_weighted_project_cofactor(lo, hi, alpha, gamma, bias_d, bias_e, globa
             rsd *= f_i
         else:
             GTG = G_i.T.dot(G_i)
-        GTG = mu_p * GTG
-
 
         B = TTTpR + A_u.T.dot((c1 - c0) * A_u) + GTG
         a = m_u.dot(c1 * A_u) + mu_p*np.dot(rsd, G_i)

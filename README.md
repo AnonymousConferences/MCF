@@ -61,5 +61,5 @@ python mcf_rec.py 0 cofactor 1 > cofactor.log
 
 6. Run the WMF model:
 ```
-python cofactor_mf.py > wmf.log
+python WMF.py > wmf.log
 ```

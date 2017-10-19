@@ -26,15 +26,16 @@ import seaborn as sns
 sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
 DEBUG_MODE = False
 DATA_DIR = 'data/rec_data/all'
+NEGATIVE_NEIGHBOR_WORDS = 40
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
 unique_uid = list()
-with open(os.path.join(DATA_DIR, 'unique_uid.txt'), 'r') as f:
+with open(os.path.join(DATA_DIR, 'unique_uid_cate.txt'), 'r') as f:
     for line in f:
         unique_uid.append(line.strip())
 
 unique_pid = list()
-with open(os.path.join(DATA_DIR, 'unique_pid.txt'), 'r') as f:
+with open(os.path.join(DATA_DIR, 'unique_pid_cate.txt'), 'r') as f:
     for line in f:
         unique_pid.append(line.strip())
 n_projects = len(unique_pid)
@@ -45,28 +46,50 @@ print n_users, n_projects
 
 def load_data(csv_file, shape=(n_users, n_projects)):
     tp = pd.read_csv(csv_file)
-    timestamps, rows, cols = np.array(tp['timestamp']), np.array(tp['bid']), np.array(
-        tp['pid'])  # rows will be user ids, cols will be projects-ids.
-    seq = np.concatenate((rows[:, None], cols[:, None], np.ones((rows.size, 1), dtype='int'), timestamps[:, None]),
+    timestamps, category, rows, cols = np.array(tp['timestamp']), np.array(tp['category']), \
+                                       np.array(tp['bid']), np.array(tp['pid'])  # rows will be user ids, cols will be projects-ids.
+    seq = np.concatenate((rows[:, None], cols[:, None], np.ones((rows.size, 1), dtype='int'),
+                          timestamps[:, None]
+                          , category[:, None]
+                          ),
                          axis=1)
     data = sparse.csr_matrix((np.ones_like(rows), (rows, cols)), dtype=np.int16, shape=shape)
-    return data, seq
+    return data, seq, tp
 
 
-train_data, train_raw = load_data(os.path.join(DATA_DIR, 'train.csv'))
+train_data, train_raw, train_df = load_data(os.path.join(DATA_DIR, 'train-cate.csv'))
+# print train_df
 user_activity = np.asarray(train_data.sum(axis=1)).ravel()
 numbackers_per_project = np.asarray(train_data.astype('int64').sum(axis=0)).ravel()
-vad_data, vad_raw = load_data(os.path.join(DATA_DIR, 'validation.csv'))
+vad_data, vad_raw,_ = load_data(os.path.join(DATA_DIR, 'validation-cate.csv'))
 
-test_data, test_raw = load_data(os.path.join(DATA_DIR, 'test.csv'))
+test_data, test_raw,_ = load_data(os.path.join(DATA_DIR, 'test-cate.csv'))
 
 ####################Generate project-project negative co-occurrence matrix based on the user backed projects history ############
 # ##################       This will build a project-project co-occurrence matrix           ############################
 # user 1: project 1, project 2, ... project k --> project 1, 2, ..., k will be seen as a sentence ==> do co-occurrence.
 np.random.seed(1024)  # set random seed
 
+def select_negative_words(train_df, id, nprojects, type='all', obj='project'):
+    if type == 'all':
+        #select all negative projects from all category, nomatter which categories the user invested
+        negative_lst_words = range(0, nprojects)
+    else:
+        #select all negative projects from the categories that the user invested
+        if obj == 'project':
+            #first get all categories the user backed:
+            backed_cates = train_df[train_df.bid==id].drop_duplicates('category').category
+            # print backed_cates
+            negative_lst_words = sorted(set(train_df.pid[train_df['category'].isin(backed_cates)]))
+            # print negative_lst_words
+        elif obj == 'backer':
+            category = train_df[train_df.pid ==id].drop_duplicates('category').category
+            #get all users backed the [category]
+            negative_lst_words = sorted(set(train_df.bid[train_df['category'].isin(category)]))
+    return negative_lst_words
 
-def _negative_coord_batch(lo, hi, train_data, prefix='project', max_neighbor_words=40, choose='macro'):
+def _negative_coord_batch(lo, hi, train_data, train_df, prefix='cate-project', max_neighbor_words=50, choose='macro',
+                          type='category', obj = 'project'): #type = 'category' or 'all'
     rows = []
     cols = []
     nprojects = train_data.shape[1]
@@ -74,7 +97,7 @@ def _negative_coord_batch(lo, hi, train_data, prefix='project', max_neighbor_wor
         # print train_data[u].nonzero()[1] #names all the item ids that the user at index u watched nonzero return a
         # 2D array, index 0 will be the row index and index 1 will be columns whose values are not equal to 0
         positive_lst_words = train_data[u].nonzero()[1]
-        negative_lst_words = range(0, nprojects)
+        negative_lst_words = select_negative_words(train_df, u, n_projects, type = 'category', obj=obj)
         lst_words = [w for w in negative_lst_words if w not in positive_lst_words]
         if len(lst_words) > max_neighbor_words:
             if choose == 'micro':
@@ -112,7 +135,9 @@ if GENERATE_NEGATIVE_PROJECT_PROJECT_COOCCURENCE_FILE:
     start_idx = range(0, n_users, batch_size)
     end_idx = start_idx[1:] + [n_users]
     Parallel(n_jobs=16)(
-        delayed(_negative_coord_batch)(lo, hi, train_data, prefix='project') for lo, hi in zip(start_idx, end_idx))
+        delayed(_negative_coord_batch)(lo, hi, train_data, train_df, prefix='cate-project', 
+                                       max_neighbor_words=NEGATIVE_NEIGHBOR_WORDS, obj = 'project') 
+        for lo, hi in zip(start_idx, end_idx))
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
     pass
@@ -127,7 +152,9 @@ if GENERATE_NEGATIVE_USER_USER_COOCCURENCE_FILE:
     start_idx = range(0, n_projects, batch_size)
     end_idx = start_idx[1:] + [n_projects]
     Parallel(n_jobs=16)(
-        delayed(_negative_coord_batch)(lo, hi, train_data.T, prefix='backer') for lo, hi in zip(start_idx, end_idx))
+        delayed(_negative_coord_batch)(lo, hi, train_data.T, train_df, prefix='cate-backer', 
+                                      max_neighbor_words=NEGATIVE_NEIGHBOR_WORDS, obj = 'backer') 
+        for lo, hi in zip(start_idx, end_idx))
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
     pass
@@ -135,7 +162,7 @@ if GENERATE_NEGATIVE_USER_USER_COOCCURENCE_FILE:
 
 ########################################################################################################################
 
-def _load_negative_coord_matrix(start_idx, end_idx, nrow, ncol, prefix='project'):
+def _load_negative_coord_matrix(start_idx, end_idx, nrow, ncol, prefix='cate-project'):
     X = sparse.csr_matrix((nrow, ncol), dtype='float32')
 
     for lo, hi in zip(start_idx, end_idx):
@@ -157,16 +184,16 @@ if BOOLEAN_NEGATIVE_LOAD_PP_COOCC_FROM_FILE:
     start_idx = range(0, n_users, batch_size)
     end_idx = start_idx[1:] + [n_users]
     X_neg = _load_negative_coord_matrix(start_idx, end_idx, n_projects, n_projects,
-                           prefix='project')  # project project co-occurrence matrix
+                           prefix='cate-project')  # project project co-occurrence matrix
     print X_neg
     print 'dumping matrix ...'
-    text_utils.save_pickle(X_neg, os.path.join(DATA_DIR, 'negative_pro_pro_cooc_30.dat'))
+    text_utils.save_pickle(X_neg, os.path.join(DATA_DIR, 'cate_negative_pro_pro_cooc_%d.dat'%NEGATIVE_NEIGHBOR_WORDS))
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
 else:
     print 'test loading model from pickle file'
     t1 = time.time()
-    X_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'negative_pro_pro_cooc_30.dat'))
+    X_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'cate_negative_pro_pro_cooc_%d.dat'%NEGATIVE_NEIGHBOR_WORDS))
     t2 = time.time()
     print '[INFO]: sparse matrix size of project project co-occurrence matrix: %d mb\n' % (
         (X_neg.data.nbytes + X_neg.indices.nbytes + X_neg.indptr.nbytes) / (1024 * 1024))
@@ -179,20 +206,20 @@ if BOOLEAN_LOAD_NEGATIVE_UU_COOCC_FROM_FILE:
     t1 = time.time()
     start_idx = range(0, n_projects, batch_size)
     end_idx = start_idx[1:] + [n_projects]
-    Y_neg = _load_negative_coord_matrix(start_idx, end_idx, n_users, n_users, prefix='backer')  # user user co-occurrence matrix
+    Y_neg = _load_negative_coord_matrix(start_idx, end_idx, n_users, n_users, prefix='cate-backer')  # user user co-occurrence matrix
 
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
 
     print 'dumping matrix ...'
     t1 = time.time()
-    text_utils.save_pickle(Y_neg, os.path.join(DATA_DIR, 'negative_user_user_cooc_30.dat'))
+    text_utils.save_pickle(Y_neg, os.path.join(DATA_DIR, 'cate_negative_user_user_cooc_%d.dat'%NEGATIVE_NEIGHBOR_WORDS))
     t2 = time.time()
     print 'Time : %d seconds' % (t2 - t1)
 else:
     print 'test loading model from pickle file'
     t1 = time.time()
-    Y_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'negative_user_user_cooc_30.dat'))
+    Y_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'cate_negative_user_user_cooc_%d.dat'%NEGATIVE_NEIGHBOR_WORDS))
     t2 = time.time()
     print '[INFO]: sparse matrix size of user user co-occurrence matrix: %d mb\n' % (
         (Y_neg.data.nbytes + Y_neg.indices.nbytes + Y_neg.indptr.nbytes) / (1024 * 1024))

@@ -201,7 +201,7 @@ class CoFacto(BaseEstimator, TransformerMixin):
         pass
 
     def _validate(self, X, vad_data, **kwargs):
-        vad_ndcg = rec_eval.normalized_dcg_at_k(X, vad_data,
+        vad_ndcg = rec_eval.parallel_normalized_dcg_at_k(X, vad_data,
                                                 self.theta,
                                                 self.beta,
                                                 **kwargs)

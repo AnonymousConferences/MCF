@@ -7,7 +7,7 @@ import rec_eval as rec_eval
 import ranked_rec_eval as ranked_eval
 import ranked_rec_eval_range as ranked_eval2
 from scipy import sparse
-DEBUG_MODE = False
+DEBUG_MODE = True
 DATA_DIR = 'data/rec_data/all'
 model_names = []
 # model_names.append('Model2_K100_0.0287.npz')
@@ -17,9 +17,8 @@ model_names = []
 # model_names.append('Model2_K100_0.0263.npz')
 # model_names.append('Model2_K100_0.03.npz')
 
-#model_names.append('Baseline1_MF_K100_recall100_0.2575_ndcg100_0.1172_map100_0.0444.npz')
-#model_names.append('Cofactor_recall100_0.2607_ndcg100_0.1202_map100_0.0464.npz')
-model_names.append('Model3_K100_recall100_0.2673_ndcg100_0.1255_map100_0.0496_active_other.npz')
+model_names.append('Baseline1_MF_K100_recall100_0.2575_ndcg100_0.1172_map100_0.0444.npz')
+model_names.append('Cofactor_recall100_0.2607_ndcg100_0.1202_map100_0.0464.npz')
 
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
@@ -108,7 +107,7 @@ if not os.path.exists('temp-files'):
     os.makedirs('temp-files')
 
 total_t1=time.time()
-topk_range = [10, 100]
+topk_range = [10,20,30,100]
 for model_name in model_names:
     t1 = time.time()
 
@@ -134,24 +133,24 @@ for model_name in model_names:
     print 'Original ranking:'
     for K in topk_range:
         print 'Test Recall@%d: %.4f'%(K, rec_eval.parallel_recall_at_k(train_data, test_data, U, V, k=K,
-                                                                   vad_data=vad_data, n_jobs=16, clear_invalid=True))
+                                                                   vad_data=vad_data, n_jobs=1, clear_invalid=True))
         print 'Test NDCG@%d: %.4f'%(K, rec_eval.parallel_normalized_dcg_at_k(train_data, test_data, U, V, k=K,
-                                                                         vad_data=vad_data, n_jobs=16, clear_invalid=True))
+                                                                         vad_data=vad_data, n_jobs=1, clear_invalid=True))
         print 'Test MAP@%d: %.4f'%(K, rec_eval.parallel_map_at_k(train_data, test_data, U, V, k=K,
-                                                             vad_data=vad_data, n_jobs=16, clear_invalid=True))
+                                                             vad_data=vad_data, n_jobs=1, clear_invalid=True))
 
     print 'After applying ranking function'
-    for threshold in [0.1, 0.3]:
-        for weight in [0.01, 0.05]:
-            for num_windows  in [10]:
+    for threshold in [0.1]:
+        for weight in [0.1]:
+            for num_windows  in [10,100]:
                 print 'threshold : %.5f , weight: %.5f, num_windows: %d' % (threshold, weight, num_windows)
                 for K in topk_range:
-                    # res = ranked_eval2.evaluate(model_temp_path, project_ts_df, train_data, test_data, test_df, U, V,
+                    res = ranked_eval2.evaluate(model_temp_path, project_ts_df, train_data, test_data, test_df, U, V,
+                                               vad_data=vad_data, n_jobs=1, threshold=threshold, k=K, weight=weight,
+                                               to = 86400.0, batch_size = 2000, num_windows=100)
+                    # res = ranked_eval.evaluate(model_temp_path, project_ts_df, train_data, test_data, test_df, U, V,
                     #                            vad_data=vad_data, n_jobs=1, threshold=threshold, k=K, weight=weight,
-                    #                            to = 86400.0, batch_size = 2000, num_windows=100)
-                    res = ranked_eval.evaluate(model_temp_path, project_ts_df, train_data, test_data, test_df, U, V,
-                                               vad_data=vad_data, n_jobs=16, threshold=threshold, k=K, weight=weight,
-                                               to=86400.0, batch_size=2000)
+                    #                            to=86400.0, batch_size=2000)
                     print 'Recal@%d: %.4f'%(K, res[0])
                     print 'NDCG@%d: %.4f'%(K, res[1])
                     print 'MAP@%d: %.4f' % (K, res[2])
