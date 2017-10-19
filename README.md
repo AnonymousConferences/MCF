@@ -4,9 +4,9 @@ This is the source codes for our MCF model
 
 We used the [Cofactor source codes](https://github.com/dawenl/cofactor) (by Liang) to produce results for cofactor model.
 
-We used the WMF implementation at [here] (https://github.com/dawenl/cofactor/blob/master/src/content_wmf.py)
+We used the WMF implementation at [here](https://github.com/dawenl/cofactor/blob/master/src/content_wmf.py)
 
-We adapted the ranking metrics from Liang at [here] ((https://github.com/dawenl/cofactor))
+We adapted the ranking metrics from Liang at [here](https://github.com/dawenl/cofactor)
 
 Four folders MovieLensRec, TasteProfile, YahooMusic, KickstarterRec contain the preprocessing steps for each of 4 datasets: 
 [MovieLens 20M](https://grouplens.org/datasets/movielens/20m/), 
