@@ -18,13 +18,13 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 import numpy as np
 import matplotlib
 #matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import time
 import text_utils
 import pandas as pd
 from scipy import sparse
-import seaborn as sns
-sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
+#import seaborn as sns
+#sns.set(context="paper", font_scale=1.5, rc={"lines.linewidth": 2}, font='DejaVu Serif')
 
 from joblib import Parallel, delayed
 
@@ -42,12 +42,12 @@ DATA_DIR = 'data/rec_data/all'
 if DEBUG_MODE:
     DATA_DIR = 'data/rec_data/debug'
 unique_uid = list()
-with open(os.path.join(DATA_DIR, 'unique_uid.txt'), 'r') as f:
+with open(os.path.join(DATA_DIR, 'unique_uid_sub.txt'), 'r') as f:
     for line in f:
         unique_uid.append(line.strip())
 
 unique_movieId = list()
-with open(os.path.join(DATA_DIR, 'unique_mid.txt'), 'r') as f:
+with open(os.path.join(DATA_DIR, 'unique_sid_sub.txt'), 'r') as f:
     for line in f:
         unique_movieId.append(line.strip())
 n_projects = len(unique_movieId)
@@ -57,34 +57,37 @@ print n_users, n_projects
 
 def load_data(csv_file, shape=(n_users, n_projects)):
     tp = pd.read_csv(csv_file)
-    timestamps, rows, cols = np.array(tp['timestamp']), np.array(tp['userId']), np.array(tp['movieId']) #rows will be user ids, cols will be projects-ids.
+    tp = tp[tp['rating'] >= 80]
+    count, rows, cols = np.array(tp['rating']), np.array(tp['uid']), np.array(tp['sid']) #rows will be user ids, cols will be projects-ids.
     seq = np.concatenate((  rows[:, None], cols[:, None], np.ones((rows.size, 1), dtype='int'),
-                            timestamps[:, None]
+                            count[:, None]
                           ), axis=1)
     data = sparse.csr_matrix((np.ones_like(rows), (rows, cols)), dtype=np.int16, shape=shape)
     return data, seq, tp
 
 
-vad_data, vad_raw, vad_df = load_data(os.path.join(DATA_DIR, 'validation.csv'))
-test_data, test_raw, test_df = load_data(os.path.join(DATA_DIR, 'test.csv'))
+#vad_data, vad_raw, vad_df = load_data(os.path.join(DATA_DIR, 'vad.num.sub.csv'))
+#test_data, test_raw, test_df = load_data(os.path.join(DATA_DIR, 'test.num.sub.csv'))
 
 
 print 'The model options are:'
-print 'model2: positive project embedding + positive user embedding'
+print 'cofactor: positive project embedding + positive user embedding'
 print 'model3: positive project embedding + negative project embedding'
 print 'model4: positive user embedding + negative user embedding'
-print 'model5: positive and negative project embedding + positive user embedding'
-print 'model6: positive project embedding + positive + negative user embedding'
-print 'model7: positive + negative project embedding + positive + negative user embedding'
-print 'enter the model: (example : model2)'
+print 'mcf: positive and negative project embedding + positive user embedding'
+print 'enter the model: (example : mcf)'
 
-
+#train_data, train_raw, train_df =  load_data(os.path.join(DATA_DIR, 'train.num.sub.csv'))
 LOAD_NEGATIVE_MATRIX = True
 #for i in range(10):
-for i in range(9,-1,-1):
+for i in [4]:
+# for i in range(9,-1,-1):
     FOLD = i
     print '*************************************FOLD %d ******************************************'%FOLD
-    train_data, train_raw, train_df = load_data(os.path.join(DATA_DIR, 'train_fold%d.csv'%FOLD))
+    # train_data, train_raw, train_df = load_data(os.path.join(DATA_DIR, 'train_fold%d.csv'%FOLD))
+    vad_data, vad_raw, vad_df = load_data(os.path.join(DATA_DIR, 'vad.num.sub.fold%d.csv'%FOLD))
+    test_data, test_raw, test_df = load_data(os.path.join(DATA_DIR, 'test.num.sub.fold%d.csv'%FOLD))
+    train_data, train_raw, train_df =  load_data(os.path.join(DATA_DIR, 'train.num.sub.fold%d.csv'%FOLD))
 
     print 'loading pro_pro_cooc_fold%d.dat'%FOLD
     t1 = time.time()
@@ -104,17 +107,17 @@ for i in range(9,-1,-1):
     ################# LOADING NEGATIVE CO-OCCURRENCE MATRIX ########################################
 
     if LOAD_NEGATIVE_MATRIX:
-        print 'test loading %snegative_pro_pro_cooc%s.dat' % (ACTIVE_CATE_PREFIX, NEG_SAMPLE_MODE)
+        print 'test loading %snegative_pro_pro_cooc%s_fold%d.dat' % (ACTIVE_CATE_PREFIX, NEG_SAMPLE_MODE, FOLD)
         t1 = time.time()
-        X_neg = text_utils.load_pickle(os.path.join(DATA_DIR, '%snegative_pro_pro_cooc%s.dat'%(ACTIVE_CATE_PREFIX, NEG_SAMPLE_MODE)))
+        X_neg = text_utils.load_pickle(os.path.join(DATA_DIR, '%snegative_pro_pro_cooc%s_fold%d.dat'%(ACTIVE_CATE_PREFIX, NEG_SAMPLE_MODE, FOLD)))
         t2 = time.time()
         print '[INFO]: sparse matrix size of negative project project co-occurrence matrix: %d mb\n' % (
             (X_neg.data.nbytes + X_neg.indices.nbytes + X_neg.indptr.nbytes) / (1024 * 1024))
         print 'Time : %d seconds' % (t2 - t1)
 
-        print 'test loading negative_user_user_cooc.dat'
+        print 'test loading negative_user_user_cooc_fold%d.dat'%FOLD
         t1 = time.time()
-        Y_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'negative_user_user_cooc.dat'))
+        Y_neg = text_utils.load_pickle(os.path.join(DATA_DIR, 'negative_user_user_cooc_fold%d.dat'%FOLD))
         t2 = time.time()
         print '[INFO]: sparse matrix size of negative user user co-occurrence matrix: %d mb\n' % (
             (Y_neg.data.nbytes + Y_neg.indices.nbytes + Y_neg.indptr.nbytes) / (1024 * 1024))
@@ -147,6 +150,7 @@ for i in range(9,-1,-1):
             M_sppmi.data -= np.log(shifted_K)
             M_sppmi.data[M_sppmi.data < 0] = 0
             M_sppmi.eliminate_zeros()
+	    return M_sppmi
     print 'converting co-occurrence matrix into sppmi matrix'
     t1 = time.time()
     X_sppmi = convert_to_SPPMI_matrix(X, max_row = n_projects, shifted_K=SHIFTED_K_VALUE)

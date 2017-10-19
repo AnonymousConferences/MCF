@@ -14,9 +14,27 @@ Four folders MovieLensRec, TasteProfile, YahooMusic, KickstarterRec contain the 
 [Yahoo Music Rating R1](https://webscope.sandbox.yahoo.com/catalog.php?datatype=r&did=1) and 
 [Kickstarter]()
 
+Something about sourcecodes:
+```
+cofactor.py is the implementation of cofactor model
+```
+
+```
+content_wmf.py is the implementation of wmf model
+```
+
 RUNNING RECOMMENDATION:
 ------------------------------------------
+0. copy the mcf source code into each data processing folder.
+
+For example:
+```
+cp *.py TasterProfile
+```
+
 1. Preprocess the data by running the script mcf_preprocess.py
+
+This step will generate train/validation/test sets for measuring the model performances
 ```
 python mcf_preprocess.py
 ```
@@ -33,11 +51,15 @@ python produce_negative_cooccurrence.py
 
 4. Run the MCF model:
 ```
-python mcf_rec.py 0 mcf 1
+python mcf_rec.py 0 mcf 1 > mcf.log
 ```
 
 5. Run the cofactor model:
 ```
-python mcf_rec.py 0 cofactor 1
+python mcf_rec.py 0 cofactor 1 > cofactor.log
 ```
 
+6. Run the WMF model:
+```
+python cofactor_mf.py > wmf.log
+```
